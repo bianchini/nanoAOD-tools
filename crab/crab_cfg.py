@@ -24,6 +24,7 @@ parser.add_argument('-genOnly',    '--genOnly',type=int, default=0,    help="")
 parser.add_argument('-trigOnly',    '--trigOnly',type=int, default=0,    help="")
 parser.add_argument('-run', '--run', type=str, default="submit", help="")
 parser.add_argument('-dbs', '--dbs', type=str, default="global", help="")
+parser.add_argument('-lightOutput', '--lightOutput', type=int, default=0, help="")
 args = parser.parse_args()
 tag = args.tag
 isMC = args.isMC
@@ -35,11 +36,13 @@ genOnly   = args.genOnly
 trigOnly  = args.trigOnly
 run = args.run
 dbs = args.dbs
+lightOutput = args.lightOutput
 samples = ('mc' if isMC else 'data')+'samples_'+str(dataYear)+'.txt'
 print "tag =", bcolors.OKGREEN, tag, bcolors.ENDC, \
     ", isMC =", bcolors.OKGREEN, str(isMC), bcolors.ENDC, \
     ", genOnly =", bcolors.OKGREEN, str(genOnly), bcolors.ENDC, \
     ", trigOnly =", bcolors.OKGREEN, str(trigOnly), bcolors.ENDC, \
+    ", lightOutput =", bcolors.OKGREEN, str(lightOutput), bcolors.ENDC, \
     ", dataYear =", bcolors.OKGREEN, str(dataYear), bcolors.ENDC, \
     " => running on sample file:", bcolors.OKGREEN, samples, bcolors.ENDC
 
@@ -53,7 +56,7 @@ config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'PSet.py'
 config.JobType.scriptExe = 'crab_script.sh'
 config.JobType.inputFiles = ['../python/postprocessing/wmass/postproc.py','../scripts/haddnano.py','../python/postprocessing/wmass/keep_and_drop_MC.txt', '../python/postprocessing/wmass/keep_and_drop_MCGenOnly.txt', '../python/postprocessing/wmass/keep_and_drop_MCTrigOnly.txt','../python/postprocessing/wmass/keep_and_drop_Data.txt']
-config.JobType.scriptArgs = ['crab=1', 'isMC='+('1' if isMC else '0'), 'dataYear='+str(dataYear), 'redojec='+str(redojec), 'genOnly='+str(genOnly), 'trigOnly='+str(trigOnly), 'runPeriod=B' ]
+config.JobType.scriptArgs = ['crab=1', 'isMC='+('1' if isMC else '0'), 'dataYear='+str(dataYear), 'redojec='+str(redojec), 'genOnly='+str(genOnly), 'trigOnly='+str(trigOnly), 'runPeriod=B', 'lightOutput='+str(lightOutput) ]
 config.JobType.sendPythonFolder	 = True
 config.section_("Data")
 config.Data.inputDataset = 'TEST'
