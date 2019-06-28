@@ -45,24 +45,27 @@ parser.add_argument('-redojec',   '--redojec',  type=int, default=0,      help="
 parser.add_argument('-runPeriod', '--runPeriod',type=str, default="B",    help="")
 parser.add_argument('-genOnly',    '--genOnly',type=int, default=0,    help="")
 parser.add_argument('-trigOnly',    '--trigOnly',type=int, default=0,    help="")
+parser.add_argument('-lightOutput', '--lightOutput',type=int, default=0,    help="0: all, 1: medium, 2: light")
 args = parser.parse_args()
-isMC      = args.isMC
-crab      = args.crab
-passall   = args.passall
-dataYear  = args.dataYear
-maxEvents = args.maxEvents
-runPeriod = args.runPeriod
-redojec   = args.redojec
-jesUncert = args.jesUncert
-genOnly   = args.genOnly
-trigOnly  = args.trigOnly
+isMC         = args.isMC
+crab         = args.crab
+passall      = args.passall
+dataYear     = args.dataYear
+maxEvents    = args.maxEvents
+runPeriod    = args.runPeriod
+redojec      = args.redojec
+jesUncert    = args.jesUncert
+genOnly      = args.genOnly
+trigOnly     = args.trigOnly
+lightOutput  = args.lightOutput
  
 print "isMC =", bcolors.OKGREEN, isMC, bcolors.ENDC, \
     "genOnly =", bcolors.OKGREEN, genOnly, bcolors.ENDC, \
     "crab =", bcolors.OKGREEN, crab, bcolors.ENDC, \
     "passall =", bcolors.OKGREEN, passall,  bcolors.ENDC, \
     "dataYear =",  bcolors.OKGREEN,  dataYear,  bcolors.ENDC, \
-    "maxEvents =", bcolors.OKGREEN, maxEvents, bcolors.ENDC 
+    "maxEvents =", bcolors.OKGREEN, maxEvents, bcolors.ENDC, \
+    "lightOutput =", bcolors.OKGREEN, lightOutput, bcolors.ENDC  
 
 if genOnly and not isMC:
     print "Cannot run with --genOnly=1 option and data simultaneously"
@@ -88,17 +91,19 @@ jmeCorrections = createJMECorrector(isMC, str(dataYear), runPeriod, jesUncert, r
 doJERVar     = True
 doJESVar     = True
 doUnclustVar = True
-metdict = {
-    "PF" : { "tag" : "MET",  "systs"  : [""] },
-    #"TK"    : { "tag" : "TkMET",    "systs"  : [""] },
-    #"puppi" : { "tag" : "PuppiMET", "systs"  : [""] },
-    }
+metdict = {}
+
+metdict["PF"] = { "tag" : "MET",  "systs"  : [""] }
+if lightOutput<1:
+    metdict["TK"]    = { "tag" : "TkMET",    "systs"  : [""] }
+    metdict["puppi"] = { "tag" : "PuppiMET", "systs"  : [""] }
 
 if jmeCorrections!=None:
     metdict["PF"]["systs"].extend( ["nom"] ) 
 
 if isMC:
-    metdict["GEN"] = {"tag" : "GenMET", "systs"  : [""]}
+    if lightOutput<2:
+        metdict["GEN"] = {"tag" : "GenMET", "systs"  : [""]}
     if doJERVar:
         metdict["PF"]["systs"].extend( ["jerUp", "jerDown"] )
     if doJESVar:
@@ -124,14 +129,14 @@ elif dataYear==2018:
     #print bcolors.OKBLUE, "No module %s will be run" % "muonScaleRes", bcolors.ENDC
     
 # muon dictionary
-mudict = { "PF" : { "tag" : "Muon", "systs" : [""] } }
+mudict = {}
+if lightOutput<2:
+    mudict["PF"] =  { "tag" : "Muon", "systs" : [""] }
 if dataYear in [2016, 2017, 2018]:
     mudict["roccor"] = { "tag" : "Muon",   "systs"  : ["corrected", "correctedUp",  "correctedDown"] }
 if isMC:
-    mudict["GEN"] = { "tag" : "GenMuon",  "systs" : ["bare"] }
-    # these exist only for 2017
-    #if dataYear==2017:
-    #mudict["roccor"]["systs"] = ["corrected", "correctedUp",  "correctedDown"]    
+    if lightOutput<2:
+        mudict["GEN"] = { "tag" : "GenMuon",  "systs" : ["bare"] }
 
 ##Muon SF
 triggerHisto = {2016:['IsoMu24_OR_IsoTkMu24_PtEtaBins/pt_abseta_ratio', 'IsoMu24_OR_IsoTkMu24_PtEtaBins/pt_abseta_ratio'], 
@@ -170,7 +175,9 @@ elif dataYear == 2018:
     lepSFISO  = lambda : lepSFProducerV2(lepFlavour="Muon", cut = "ISO", histos=isoHisto[dataYear], dataYear=str(dataYear), runPeriod="ABCD", useAbseta=useAbsEta[dataYear], ptEtaAxis=ptEtaAxis[dataYear])
 ################################################ GEN
 
-Wtypes = ['bare', 'preFSR', 'dress']
+Wtypes = ['preFSR']
+if lightOutput<2:
+    Wtypes.extend(['bare','dress'])
 
 ################################################
 
@@ -208,7 +215,7 @@ if isMC:
                    lepSFISO(),
                    jmeCorrections(),
                    recoZproducer(mudict=mudict, isMC=isMC),
-                   additionalVariables(isMC=isMC, mudict=mudict, metdict=metdict), 
+                   additionalVariables(isMC=isMC, mudict=mudict, metdict=metdict, lightOutput=lightOutput), 
                    genLeptonSelection(Wtypes=Wtypes), 
                    CSVariables(Wtypes=Wtypes), 
                    genVproducer(Wtypes=Wtypes),
@@ -217,9 +224,10 @@ if isMC:
         # add before recoZproducer
         if muonScaleRes!=None: modules.insert(5, muonScaleRes())
         if dataYear == 2016: 
-            modules.insert(2,lepSFTrig_GH())
-            modules.insert(3,lepSFID_GH())
-            modules.insert(4,lepSFISO_GH())
+            if lightOutput<2:
+                modules.insert(2,lepSFTrig_GH())
+                modules.insert(3,lepSFID_GH())
+                modules.insert(4,lepSFISO_GH())
     elif genOnly: 
         modules = [genLeptonSelection(Wtypes=Wtypes, filterByDecay=True),CSVariables(Wtypes=Wtypes),genVproducer(Wtypes=Wtypes)]
     elif trigOnly: 
@@ -230,7 +238,7 @@ else:
     input_files.append( input_dir+ifileDATA )
     modules = [preSelection(isMC=isMC, passall=passall, dataYear=dataYear), 
                recoZproducer(mudict=mudict, isMC=isMC),
-               additionalVariables(isMC=isMC, mudict=mudict, metdict=metdict),
+               additionalVariables(isMC=isMC, mudict=mudict, metdict=metdict, lightOutput=lightOutput),
                ]
     # add before recoZproducer
     if jmeCorrections!=None: modules.insert(1,jmeCorrections())
